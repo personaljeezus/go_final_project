@@ -1,82 +1,50 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"os"
-	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
-type Task struct {
-	ID      int64  `db:"id"`
-	Date    string `db:"date"`
-	Title   string `db:"title"`
-	Comment string `db:"comment"`
-	Repeat  string `db:"repeat"`
-}
-
-func nextDateHandler(w http.ResponseWriter, r *http.Request) {
-	nowParam := r.FormValue("now")
-	dateParam := r.FormValue("date")
-	repeatParam := r.FormValue("repeat")
-
-	if nowParam == "" || dateParam == "" || repeatParam == "" {
-		http.Error(w, "Поля параметров пусты", http.StatusBadRequest)
-		return
-	}
-
-	now, err := time.Parse("20060102", nowParam)
-	if err != nil {
-		http.Error(w, "Неверный параметр", http.StatusBadRequest)
-		return
-	}
-
-	date, err := time.Parse("20060102", dateParam)
-	if err != nil {
-		http.Error(w, "Неверный параметр", http.StatusBadRequest)
-		return
-	}
-
-	nextDate, err := nextWeekday(now, date, repeatParam)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	w.Write([]byte(nextDate.Format("20060102")))
-
-}
-
-func THandler(w http.ResponseWriter, r *http.Request) {
-	dateParam := r.FormValue("date")
-	titleParam := r.FormValue("title")
-	repeatParam := r.FormValue("repeat")
-
-	if titleParam == " " {
-		http.Error(w, "Не указан заголовок задачи", http.StatusRequestURITooLong)
-		return
-	}
-	if dateParam == " " {
-		date, _ := time.Parse("20060102", dateParam)
-		http.Error(w, "Неверная дата задачи", http.StatusTeapot)
-		nextWeekday(time.Now(), date, repeatParam)
-		return
-	}
-}
 func main() {
+	godotenv.Load("ENV_PATH")
 	defaultPort := os.Getenv("PORT")
 	if defaultPort == "" {
 		defaultPort = "7540"
-		fmt.Printf("Сервер слушает порт %s\n", defaultPort)
 	}
-	defer db.Close()
-	dir := http.Dir("./web/")
-	webFile := http.FileServer(dir)
-	mux := http.NewServeMux()
-	mux.Handle("/", webFile)
-	mux.HandleFunc("/api/nextdate", nextDateHandler)
-	mux.HandleFunc("/api/task", THandler)
-	err := http.ListenAndServe(":"+defaultPort, mux)
+	db, err := dbCheck()
 	if err != nil {
 		panic(err)
+	}
+	defer db.Close()
+	r := gin.Default()
+	api := r.Group("/api")
+	{
+		api.GET("/nextdate", nextDateHandler)
+		api.GET("/tasks", getTasksHandler)
+		api.POST("/task", PostHandler)
+		api.GET("/task", getTaskByID)
+		api.DELETE("/task", DeleteHandler)
+		api.PUT("/task", PutHandler)
+	}
+	r.Static("/js", "./web/js")
+	r.Static("/css", "./web/css")
+	r.StaticFile("favicon.ico", "./web/favicon.ico")
+	r.LoadHTMLFiles("./web/index.html", "./web/login.html")
+	r.GET("/index.html", func(c *gin.Context) {
+		c.HTML(200, "index.html", nil)
+	})
+	r.GET("/login.html", func(c *gin.Context) {
+		c.HTML(200, "login.html", nil)
+	})
+	r.GET("/", func(c *gin.Context) {
+		c.HTML(200, "index.html", nil)
+	})
+	// Определяем маршрут для корневого URL
+	err = r.Run(":" + defaultPort)
+	var c *gin.Context
+	if err != nil {
+		c.JSON(404, gin.H{"message": "err"})
 	}
 }

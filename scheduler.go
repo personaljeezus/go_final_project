@@ -1,70 +1,63 @@
 package main
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
 	_ "modernc.org/sqlite"
 )
 
-type task struct {
-	ID      int64  `db:"id"`
+type Task struct {
+	ID      int    `db:"id"`
 	Date    string `db:"date"`
 	Title   string `db:"title"`
 	Comment string `db:"comment"`
 	Repeat  string `db:"repeat"`
 }
 
-var (
-	db *sqlx.DB
-)
-
-func count(db *sqlx.DB) (int, error) {
-	var count int
-	return count, db.Get(&count, "SELECT count(id) FROM scheduler")
-}
-
 func openDB() (*sqlx.DB, error) {
-	dbFile := os.Getenv("DATABASE_PATH")
+	godotenv.Load("ENV_PATH")
+	appPath := os.Getenv("DATABASE_PATH")
+	dbFile := filepath.Join(filepath.Dir(appPath), "scheduler.db")
 	if dbFile == "" {
-		dbFile = "../scheduler.db"
+		dbFile = "./scheduler.db"
 	}
 	db, err := sqlx.Open("sqlite", dbFile)
 	if err != nil {
 		return nil, err
 	}
-
 	return db, nil
 }
+
 func dbCheck() (*sqlx.DB, error) {
 	mu.Lock()
 	defer mu.Unlock()
-	appPath, err := os.Executable()
-	if err != nil {
-		log.Fatal("Ошибка загрузки файла .env")
+	godotenv.Load("ENV_PATH")
+	appPath := os.Getenv("DATABASE_PATH")
+	dbFile := filepath.Join(filepath.Dir(appPath), "scheduler.db")
+	if appPath == "" {
+		dbFile = "./scheduler.db"
 	}
-	dbFile := os.Getenv("DATABASE_PATH")
-	appDir := filepath.Dir(appPath)
-	dbFile = filepath.Join(appDir, dbFile)
-	_, err = os.Stat(dbFile)
-	if err != nil {
-		log.Fatal()
+	_, err := os.Stat(dbFile)
+	var install bool
+	if os.IsNotExist(err) {
+		install = true
 	}
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXIST scheduler (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		Date CHAR(8) NOT NULL, 
-		Title TEXT NOT NULL,
-		Сomment TEXT NOT NULL, 
-		Repeat VARCHAR(128) NOT NULL)`)
+	db, err := openDB()
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.Exec(`CREATE INDEX task_date ON scheduler(date)`)
-	if err != nil {
-		return nil, err
+	if install {
+		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS scheduler (id INTEGER PRIMARY KEY AUTOINCREMENT, date CHAR(8) NOT NULL, title TEXT NOT NULL, comment TEXT NOT NULL, repeat VARCHAR(128) NOT NULL)`)
+		if err != nil {
+			return nil, err
+		}
+		_, err = db.Exec(`CREATE INDEX IF NOT EXISTS task_date ON scheduler(date)`)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return db, nil
 }
