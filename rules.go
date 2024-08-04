@@ -25,32 +25,37 @@ const (
 	Sunday
 )
 
-func nextWeekday(now time.Time, date time.Time, repeat string) (time.Time, error) {
-	if repeat == "y" {
-		return date.AddDate(1, 0, 0), nil
+func nextWeekday(now time.Time, date string, repeat string) (string, error) {
+	parsedDate, err := time.Parse("20060102", date)
+	if err != nil {
+		return "", errors.New("Неверный формат даты")
 	}
+
+	if repeat == "y" {
+		parsedDate = parsedDate.AddDate(1, 0, 0)
+		for parsedDate.Before(now) {
+			parsedDate = parsedDate.AddDate(1, 0, 0)
+		}
+		return parsedDate.Format("20060102"), nil
+	}
+
 	if strings.HasPrefix(repeat, "d ") {
 		parts := strings.Split(repeat, " ")
 		if len(parts) != 2 {
-			return time.Time{}, errors.New("Неверный формат правила повторения")
+			return "", errors.New("Неверный формат правила повторения")
 		}
 		days, err := strconv.Atoi(parts[1])
 		if err != nil || days <= 0 || days > 400 {
-			return time.Time{}, errors.New("Неверное количество дней")
+			return "", errors.New("Неверное количество дней")
 		}
-		return date.AddDate(0, 0, days), nil
+		parsedDate = parsedDate.AddDate(0, 0, days)
+		for parsedDate.Before(now) {
+			parsedDate = parsedDate.AddDate(0, 0, days)
+		}
+		return parsedDate.Format("20060102"), nil
 	}
-	if repeat == "" {
-		db, err := openDB()
-		if err != nil {
-			return time.Time{}, err
-		}
-		_, err = db.Exec("DELETE FROM scheduler WHERE repeat IS NULL")
-		if err != nil {
-			return time.Time{}, fmt.Errorf("Поле repeat пустое: %s", repeat)
-		}
-	}
-	return time.Time{}, fmt.Errorf("Неверное правило повторения: %s", repeat)
+
+	return "", fmt.Errorf("Неверное правило повторения: %s", repeat)
 }
 func nextDateHandler(c *gin.Context) {
 	nowParam := c.Query("now")
@@ -58,27 +63,27 @@ func nextDateHandler(c *gin.Context) {
 	repeatParam := c.Query("repeat")
 
 	if nowParam == "" || dateParam == "" || repeatParam == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Params fields are nil"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Поля параметров пусты"})
 		return
 	}
 
 	now, err := time.Parse("20060102", nowParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Now param parse error"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Ошибка парсинга"})
 		return
 	}
 
 	date, err := time.Parse("20060102", dateParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Date param parse error"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Ошибка парсинга"})
 		return
 	}
 
-	nextDate, err := nextWeekday(now, date, repeatParam)
+	nextDate, err := nextWeekday(now, date.Format("20060102"), repeatParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.String(http.StatusOK, nextDate.Format("20060102"))
+	c.String(http.StatusOK, nextDate)
 }

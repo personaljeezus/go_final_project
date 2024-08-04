@@ -2,7 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -16,15 +19,12 @@ type Tasks struct {
 	Comment string `json:"comment"`
 	Repeat  string `json:"repeat"`
 }
-type Tsk struct {
-	ts []Tasks `json:ts`
-}
 
 var mu sync.Mutex
 
 func PostHandler(c *gin.Context) {
 	var tasks Tasks
-	today := time.Now()
+	now := time.Now()
 	if err := c.BindJSON(&tasks); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка сериализации"})
 		return
@@ -33,8 +33,8 @@ func PostHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Title required"})
 		return
 	}
-	if tasks.Date == "" && tasks.Repeat == "" {
-		tasks.Date = today.Format("20060102")
+	if tasks.Date == "" {
+		tasks.Date = now.Format("20060102")
 	}
 	realTime, err := time.Parse("20060102", tasks.Date)
 	if err != nil {
@@ -43,16 +43,16 @@ func PostHandler(c *gin.Context) {
 	}
 	tasks.Date = realTime.Format("20060102")
 
-	if tasks.Date < today.Format("20060102") {
-		tasks.Date = today.Format("20060102")
+	if tasks.Date < now.Format("20060102") && tasks.Repeat == "" {
+		tasks.Date = now.Format("20060102")
 	}
-	if tasks.Repeat != "" {
-		newDate, err := nextWeekday(today, time.Now(), tasks.Repeat)
+	if tasks.Date < now.Format("20060102") && tasks.Repeat != "" {
+		newDate, err := nextWeekday(now, now.Format("20060102"), tasks.Repeat)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка преобразования даты"})
 			return
 		}
-		tasks.Date = newDate.Format("20060102")
+		tasks.Date = newDate
 	}
 	db, err := openDB()
 	if err != nil {
@@ -90,27 +90,38 @@ func getTasksHandler(c *gin.Context) {
 		return
 	}
 	defer rows.Close()
-	tsk := Tsk{ts: make([]Tasks, 0)}
+	tasks := make([]map[string]string, 0)
 	for rows.Next() {
-		var task Tasks
-		if err := rows.Scan(&task.ID, &task.Title, &task.Date, &task.Comment, &task.Repeat); err != nil {
+		var id int64
+		var title, date, comment, repeat string
+		if err := rows.Scan(&id, &title, &date, &comment, &repeat); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при чтении данных"})
 			return
 		}
-		tsk.ts = append(tsk.ts, task)
+		task := map[string]string{
+			"id":      fmt.Sprint(id),
+			"title":   title,
+			"date":    date,
+			"comment": comment,
+			"repeat":  repeat,
+		}
+		tasks = append(tasks, task)
 	}
 	if err := rows.Err(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при обработке результатов запроса"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка rows"})
 		return
 	}
-	c.JSON(http.StatusOK, tsk)
+	if tasks == nil {
+		tasks = make([]map[string]string, 0)
+	}
+	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
 }
 func getTaskByID(c *gin.Context) {
 	id := c.Query("id")
 	var task Tasks
 	db, err := openDB()
 	if err != nil {
-		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Невозможно открыть базу данных"})
+		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Невозможно открыть бд"})
 		return
 	}
 	defer db.Close()
@@ -124,93 +135,88 @@ func getTaskByID(c *gin.Context) {
 		}
 		return
 	}
-	c.JSON(http.StatusOK, task)
-}
-func search(c *gin.Context) {
-	searchParam := c.Query("search")
-	if searchParam == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Параметр поиска не предоставлен"})
-		return
-	}
-	search, err := time.Parse("20060102", searchParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат даты. Используйте YYYYMMDD"})
-		return
-	}
-	db, err := openDB()
-	if err != nil {
-		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Невозможно открыть базу данных"})
-		return
-	}
-	defer db.Close()
-	rows, err := db.Query("SELECT id, date, title, comment, repeat FROM scheduler WHERE date = ? LIMIT ?", search.Format("20060102"), 5)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при выполнении запроса"})
-		return
-	}
-	defer rows.Close()
-	tasks := make([]Tasks, 0)
-	for rows.Next() {
-		var task Tasks
-		if err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при чтении данных"})
-			return
-		}
-		tasks = append(tasks, task)
-	}
-	if err := rows.Err(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при обработке результатов запроса"})
-		return
+	taskMap := map[string]string{
+		"id":      fmt.Sprintf("%d", task.ID),
+		"date":    task.Date,
+		"title":   task.Title,
+		"comment": task.Comment,
+		"repeat":  task.Repeat,
 	}
 
-	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
+	c.JSON(http.StatusOK, taskMap)
 }
+
+type TasksInput struct {
+	ID      string `json:"id"`
+	Date    string `json:"date"`
+	Title   string `json:"title"`
+	Comment string `json:"comment"`
+	Repeat  string `json:"repeat"`
+}
+
 func PutHandler(c *gin.Context) {
-	var task Tasks
-	if err := c.BindJSON(&task); err != nil {
+	var input TasksInput
+	if err := c.BindJSON(&input); err != nil {
+		log.Printf("Ошибка сериализации: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка сериализации"})
 		return
 	}
-
-	if task.ID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Поле идентификатора пустое"})
+	if input.ID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Поле id пустое"})
 		return
 	}
-	if task.Title == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Поле заголовок пустое"})
-		return
-	}
-	today := time.Now()
-	if task.Date == "" && task.Repeat == "" {
-		task.Date = today.Format("20060102")
-	}
-	realTime, err := time.Parse("20060102", task.Date)
+	id, err := strconv.ParseInt(input.ID, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка парсинга даты, неверный формат даты"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат id"})
 		return
 	}
-	task.Date = realTime.Format("20060102")
-	if task.Date < today.Format("20060102") {
-		task.Date = today.Format("20060102")
+	if id > 1000000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат id"})
+		return
 	}
-	if task.Repeat != "" {
-		newDate, err := nextWeekday(today, realTime, task.Repeat)
+	if input.Title == "" {
+		c.JSON(http.StatusAccepted, gin.H{"error": "Поле заголовка пустое"})
+		return
+	}
+	now := time.Now()
+	if input.Date == "" && input.Repeat == "" {
+		input.Date = now.Format("20060102")
+	}
+
+	realTime, err := time.Parse("20060102", input.Date)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка парсинга даты"})
+		return
+	}
+	input.Date = realTime.Format("20060102")
+	if input.Date < now.Format("20060102") && input.Repeat == "" {
+		input.Date = now.Format("20060102")
+	}
+	if input.Date < now.Format("20060102") && input.Repeat != "" {
+		newDate, err := nextWeekday(now, now.Format("20060102"), input.Repeat)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка преобразования даты"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка расчёта даты"})
 			return
 		}
-		task.Date = newDate.Format("20060102")
+		input.Date = newDate
+	}
+	task := Tasks{
+		ID:      id,
+		Date:    input.Date,
+		Title:   input.Title,
+		Comment: input.Comment,
+		Repeat:  input.Repeat,
 	}
 	db, err := openDB()
 	if err != nil {
-		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Невозможно открыть базу данных"})
+		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Невозможно открыть бд"})
 		return
 	}
 	defer db.Close()
-	res, err := db.Exec("UPDATE scheduler SET Date = ?, Title = ?, Comment = ?, Repeat = ? WHERE id = ?",
+	res, err := db.Exec(`UPDATE scheduler SET date = ?, title = ?, comment = ?, repeat = ? WHERE id = ?`,
 		task.Date, task.Title, task.Comment, task.Repeat, task.ID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "Ошибка обновления данных в базе"})
+		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "Ошибка обновления данных в бд"})
 		return
 	}
 	rowsAffected, err := res.RowsAffected()
@@ -219,10 +225,10 @@ func PutHandler(c *gin.Context) {
 		return
 	}
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена"})
+		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
-	c.JSON(200, gin.H{"status": "Задача обновлена"})
+	c.JSON(http.StatusOK, gin.H{})
 }
 func DeleteHandler(c *gin.Context) {
 	id := c.Query("id")
@@ -238,17 +244,76 @@ func DeleteHandler(c *gin.Context) {
 	defer db.Close()
 	res, err := db.Exec("DELETE FROM scheduler WHERE id = ?", id)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "Ошибка удаления данных из базы"})
+		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "Ошибка удаления данных из бд"})
 		return
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка получения количества затронутых строк"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "rowsaffected err"})
 		return
 	}
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "rowsaffected - 0"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Задача успешно удалена"})
+	c.JSON(http.StatusOK, gin.H{})
+}
+func DoneHandler(c *gin.Context) {
+	id := c.Query("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id req"})
+		return
+	}
+	log.Printf("ID: %s", id)
+	db, err := openDB()
+	if err != nil {
+		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Невозможно открыть бд"})
+		return
+	}
+	defer db.Close()
+	var task Tasks
+	err = db.QueryRow("SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?", id).Scan(
+		&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("Задание не найдено: %s", id)
+			c.JSON(http.StatusNotFound, gin.H{})
+		} else {
+			log.Printf("Ошибка бд: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{})
+		}
+		return
+	}
+	log.Printf("Фулл таска: %+v", task)
+	now := time.Now()
+	if task.Repeat == "" {
+		_, err = db.Exec("DELETE FROM scheduler WHERE id = ?", id)
+		if err != nil {
+			log.Printf("Задача не удалилась: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка удаления задачи"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{})
+	}
+	if task.Repeat != "" {
+		currentTime, err := time.Parse("20060102", task.Date)
+		if err != nil {
+			log.Printf("Ошибка парсинга даты 301: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка парсинга даты"})
+			return
+		}
+		newDate, err := nextWeekday(now, currentTime.Format("20060102"), task.Repeat)
+		if err != nil {
+			log.Printf("Расчет некстдейт фейлится: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка расчёта даты"})
+			return
+		}
+		_, err = db.Exec("UPDATE scheduler SET date = ? WHERE id = ?", newDate, id)
+		if err != nil {
+			log.Printf("Ошибка апдейта даты 313: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления даты задачи"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{})
+	}
 }

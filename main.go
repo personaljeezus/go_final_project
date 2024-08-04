@@ -25,8 +25,9 @@ func main() {
 		api.GET("/tasks", getTasksHandler)
 		api.POST("/task", PostHandler)
 		api.GET("/task", getTaskByID)
-		api.DELETE("/task", DeleteHandler)
 		api.PUT("/task", PutHandler)
+		api.DELETE("/task", DeleteHandler)
+		api.POST("/task/done", DoneHandler)
 	}
 	r.Static("/js", "./web/js")
 	r.Static("/css", "./web/css")
@@ -41,7 +42,6 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(200, "index.html", nil)
 	})
-	// Определяем маршрут для корневого URL
 	err = r.Run(":" + defaultPort)
 	var c *gin.Context
 	if err != nil {
