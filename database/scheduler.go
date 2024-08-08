@@ -1,4 +1,4 @@
-package main
+package database
 
 import (
 	"os"
@@ -9,15 +9,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type Task struct {
-	ID      int    `db:"id"`
-	Date    string `db:"date"`
-	Title   string `db:"title"`
-	Comment string `db:"comment"`
-	Repeat  string `db:"repeat"`
-}
-
-func openDB() (*sqlx.DB, error) {
+func OpenDB() (*sqlx.DB, error) {
 	godotenv.Load("ENV_PATH")
 	appPath := os.Getenv("DATABASE_PATH")
 	dbFile := filepath.Join(filepath.Dir(appPath), "scheduler.db")
@@ -31,9 +23,7 @@ func openDB() (*sqlx.DB, error) {
 	return db, nil
 }
 
-func dbCheck() (*sqlx.DB, error) {
-	mu.Lock()
-	defer mu.Unlock()
+func DbCheck() (*sqlx.DB, error) {
 	godotenv.Load("ENV_PATH")
 	appPath := os.Getenv("DATABASE_PATH")
 	dbFile := filepath.Join(filepath.Dir(appPath), "scheduler.db")
@@ -45,7 +35,7 @@ func dbCheck() (*sqlx.DB, error) {
 	if os.IsNotExist(err) {
 		install = true
 	}
-	db, err := openDB()
+	db, err := OpenDB()
 	if err != nil {
 		return nil, err
 	}

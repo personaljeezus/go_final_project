@@ -1,6 +1,9 @@
 package main
 
 import (
+	"go_final_project/database"
+	"go_final_project/handlers"
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +16,12 @@ func main() {
 	if defaultPort == "" {
 		defaultPort = "7540"
 	}
-	db, err := dbCheck()
+	db, err := database.DbCheck()
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+	db, err = database.OpenDB()
 	if err != nil {
 		panic(err)
 	}
@@ -21,13 +29,13 @@ func main() {
 	r := gin.Default()
 	api := r.Group("/api")
 	{
-		api.GET("/nextdate", nextDateHandler)
-		api.GET("/tasks", getTasksHandler)
-		api.POST("/task", PostHandler)
-		api.GET("/task", getTaskByID)
-		api.PUT("/task", PutHandler)
-		api.DELETE("/task", DeleteHandler)
-		api.POST("/task/done", DoneHandler)
+		api.GET("/nextdate", handlers.NextDateHandler)
+		api.GET("/tasks", handlers.GetTasksHandler(db))
+		api.POST("/task", handlers.PostHandler(db))
+		api.GET("/task", handlers.GetTaskByID(db))
+		api.PUT("/task", handlers.PutHandler(db))
+		api.DELETE("/task", handlers.DeleteHandler(db))
+		api.POST("/task/done", handlers.DeleteHandler(db))
 	}
 	r.Static("/js", "./web/js")
 	r.Static("/css", "./web/css")
@@ -45,6 +53,6 @@ func main() {
 	err = r.Run(":" + defaultPort)
 	var c *gin.Context
 	if err != nil {
-		c.JSON(404, gin.H{"message": "err"})
+		c.JSON(http.StatusNotFound, gin.H{"message": "err"})
 	}
 }
