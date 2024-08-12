@@ -1,7 +1,9 @@
 package checkfuncs
 
 import (
+	"database/sql"
 	"go_final_project/models"
+	"log"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -21,12 +23,32 @@ func UpdateTaskDate(db *sqlx.DB, task *models.Tasks) error {
 	return err
 }
 func DeleteTaskByID(db *sqlx.DB, id string) error {
-	_, err := db.Exec("DELETE FROM scheduler WHERE id = ?", id)
-	return err
+	res, err := db.Exec("DELETE FROM scheduler WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("Ошибка получения результата запроса: %v", err)
+		return nil
+	}
+	if rowsAffected == 0 {
+		return nil
+	}
+	return nil
 }
 func GetTaskByID(db *sqlx.DB, id string) (models.Tasks, error) {
 	var task models.Tasks
 	err := db.QueryRow("SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?", id).Scan(
 		&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("Задание не найдено: %s", id)
+		} else {
+			log.Printf("Ошибка бд: %v", err)
+		}
+		return task, err
+	}
+	log.Printf("Фулл таска: %+v", task)
 	return task, err
 }

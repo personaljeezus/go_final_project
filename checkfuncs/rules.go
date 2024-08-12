@@ -15,7 +15,7 @@ const (
 )
 
 func NextWeekday(now time.Time, date string, repeat string) (string, error) {
-	parsedDate, err := time.Parse("20060102", date)
+	parsedDate, err := time.Parse(Layout, date)
 	if err != nil {
 		return "", errors.New("Неверный формат даты")
 	}
@@ -25,7 +25,7 @@ func NextWeekday(now time.Time, date string, repeat string) (string, error) {
 		for parsedDate.Before(now) {
 			parsedDate = parsedDate.AddDate(1, 0, 0)
 		}
-		return parsedDate.Format("20060102"), nil
+		return parsedDate.Format(Layout), nil
 	}
 
 	if strings.HasPrefix(repeat, "d ") {
@@ -41,7 +41,7 @@ func NextWeekday(now time.Time, date string, repeat string) (string, error) {
 		for parsedDate.Before(now) {
 			parsedDate = parsedDate.AddDate(0, 0, days)
 		}
-		return parsedDate.Format("20060102"), nil
+		return parsedDate.Format(Layout), nil
 	}
 
 	return "", fmt.Errorf("Неверное правило повторения: %s", repeat)

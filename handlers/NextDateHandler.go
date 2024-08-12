@@ -18,19 +18,19 @@ func NextDateHandler(c *gin.Context) {
 		return
 	}
 
-	now, err := time.Parse("20060102", nowParam)
+	now, err := time.Parse(checkfuncs.Layout, nowParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Ошибка парсинга"})
 		return
 	}
 
-	date, err := time.Parse("20060102", dateParam)
+	date, err := time.Parse(checkfuncs.Layout, dateParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Ошибка парсинга"})
 		return
 	}
 
-	nextDate, err := checkfuncs.NextWeekday(now, date.Format("20060102"), repeatParam)
+	nextDate, err := checkfuncs.NextWeekday(now, date.Format(checkfuncs.Layout), repeatParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return

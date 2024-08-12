@@ -3,7 +3,9 @@ package handlers
 import (
 	"database/sql"
 	"go_final_project/checkfuncs"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -12,11 +14,11 @@ import (
 func DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Query("id")
-		if err := checkfuncs.CheckID(id); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		if id == "" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "ID field nil"})
 			return
 		}
-
+		log.Printf("ID: %s", id)
 		task, err := checkfuncs.GetTaskByID(db, id)
 		if err != nil {
 			if err == sql.ErrNoRows {
@@ -26,16 +28,17 @@ func DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 			}
 			return
 		}
-
-		if task.Repeat == "" {
+		if strings.TrimSpace(task.Repeat) != "" {
+			err := checkfuncs.UpdateTaskDate(db, &task)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task date"})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{})
+		} else {
 			if err := checkfuncs.DeleteTaskByID(db, id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
-			} else {
-				c.JSON(http.StatusOK, gin.H{})
-			}
-		} else {
-			if err := checkfuncs.UpdateTaskDate(db, &task); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task date"})
+				return
 			} else {
 				c.JSON(http.StatusOK, gin.H{})
 			}
