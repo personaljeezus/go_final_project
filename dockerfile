@@ -1,11 +1,13 @@
 FROM golang:1.21.5
 
-WORKDIR /go_final_project
+WORKDIR /go_final
 
-COPY . .
+COPY . ./
 
 RUN go mod download
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /go_final_project
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /go_final_pr
 
-CMD ["/final"]
+EXPOSE 7540
+
+CMD ["/go_final_pr"]

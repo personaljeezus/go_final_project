@@ -12,7 +12,7 @@ import (
 
 func main() {
 	godotenv.Load("ENV_PATH")
-	defaultPort := os.Getenv("PORT")
+	defaultPort := os.Getenv("TODO_PORT")
 	if defaultPort == "" {
 		defaultPort = "7540"
 	}
@@ -35,7 +35,7 @@ func main() {
 		api.GET("/task", handlers.GetTaskByID(db))
 		api.PUT("/task", handlers.PutHandler(db))
 		api.DELETE("/task", handlers.DeleteHandler(db))
-		api.POST("/task/done", handlers.DeleteHandler(db))
+		api.POST("/task/done", handlers.DoneHandler(db))
 	}
 	r.Static("/js", "./web/js")
 	r.Static("/css", "./web/css")

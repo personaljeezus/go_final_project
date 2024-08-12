@@ -5,7 +5,6 @@ import (
 	"go_final_project/checkfuncs"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -14,10 +13,6 @@ import (
 func DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Query("id")
-		if id == "" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "ID field nil"})
-			return
-		}
 		log.Printf("ID: %s", id)
 		task, err := checkfuncs.GetTaskByID(db, id)
 		if err != nil {
@@ -28,7 +23,7 @@ func DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 			}
 			return
 		}
-		if strings.TrimSpace(task.Repeat) != "" {
+		if task.Repeat != "" {
 			err := checkfuncs.UpdateTaskDate(db, &task)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task date"})

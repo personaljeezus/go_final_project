@@ -25,7 +25,7 @@ func DeleteHandler(db *sqlx.DB) gin.HandlerFunc {
 			return
 		}
 		if rowsAffected == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{})
+			c.JSON(http.StatusNotFound, gin.H{"error": "rowsaffected - 0"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{})
