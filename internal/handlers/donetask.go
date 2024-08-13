@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"go_final_project/checkfuncs"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,8 +12,10 @@ import (
 func DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Query("id")
-		log.Printf("ID: %s", id)
-		task, err := checkfuncs.GetTaskByID(db, id)
+		if id == "" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "id not found"})
+		}
+		task, err := checkfuncs.GetTask(db, id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
@@ -31,7 +32,7 @@ func DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 			}
 			c.JSON(http.StatusOK, gin.H{})
 		} else {
-			if err := checkfuncs.DeleteTaskByID(db, id); err != nil {
+			if err := checkfuncs.DeleteTask(db, id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
 				return
 			} else {

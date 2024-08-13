@@ -1,4 +1,4 @@
-package checkfuncs
+package service
 
 import (
 	"errors"

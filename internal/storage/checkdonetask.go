@@ -1,7 +1,9 @@
-package checkfuncs
+package service
 
 import (
 	"database/sql"
+	"errors"
+	_ "go_final_project/internal/service"
 	"go_final_project/models"
 	"log"
 	"time"
@@ -9,7 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func UpdateTaskDate(db *sqlx.DB, task *models.Tasks) error {
+func (t *TaskStorage) UpdateTaskDate(task *models.Tasks) error {
 	now := time.Now()
 	currentTime, err := time.Parse(Layout, task.Date)
 	if err != nil {
@@ -19,11 +21,21 @@ func UpdateTaskDate(db *sqlx.DB, task *models.Tasks) error {
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("UPDATE scheduler SET date = ? WHERE id = ?", newDate, task.ID)
-	return err
+	res, err := t.db.Exec(`UPDATE scheduler SET date = ?, title = ?, comment = ?, repeat = ? WHERE id = ?`,
+		newDate, task.Title, task.Comment, task.Repeat, task.ID)
+	if err != nil {
+		return errors.New("db exec fail")
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return errors.New("rowsaffected err")
+	}
+	if rowsAffected == 0 {
+		return errors.New("rowsaffected = 0")
+	}
 }
-func DeleteTaskByID(db *sqlx.DB, id string) error {
-	res, err := db.Exec("DELETE FROM scheduler WHERE id = ?", id)
+func (t TaskStorage) DeleteTask(id string) error {
+	res, err := t.db.Exec("DELETE FROM scheduler WHERE id = ?", id)
 	if err != nil {
 		return err
 	}
@@ -37,7 +49,7 @@ func DeleteTaskByID(db *sqlx.DB, id string) error {
 	}
 	return nil
 }
-func GetTaskByID(db *sqlx.DB, id string) (models.Tasks, error) {
+func GetTask(db *sqlx.DB, id string) (models.Tasks, error) {
 	var task models.Tasks
 	err := db.QueryRow("SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?", id).Scan(
 		&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)

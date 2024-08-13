@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NextDateHandler(c *gin.Context) {
+func nextDate(c *gin.Context) {
 	nowParam := c.Query("now")
 	dateParam := c.Query("date")
 	repeatParam := c.Query("repeat")
