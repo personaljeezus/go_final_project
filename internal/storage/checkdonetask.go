@@ -1,23 +1,22 @@
-package service
+package storage
 
 import (
 	"database/sql"
 	"errors"
-	_ "go_final_project/internal/service"
-	"go_final_project/models"
 	"log"
 	"time"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/personaljeezus/go_final_project/internal/service"
+	"github.com/personaljeezus/go_final_project/models"
 )
 
 func (t *TaskStorage) UpdateTaskDate(task *models.Tasks) error {
 	now := time.Now()
-	currentTime, err := time.Parse(Layout, task.Date)
+	currentTime, err := time.Parse(models.Layout, task.Date)
 	if err != nil {
 		return err
 	}
-	newDate, err := NextWeekday(now, currentTime.Format(Layout), task.Repeat)
+	newDate, err := service.NextWeekday(now, currentTime.Format(models.Layout), task.Repeat)
 	if err != nil {
 		return err
 	}
@@ -33,6 +32,7 @@ func (t *TaskStorage) UpdateTaskDate(task *models.Tasks) error {
 	if rowsAffected == 0 {
 		return errors.New("rowsaffected = 0")
 	}
+	return errors.New("task upd fail")
 }
 func (t TaskStorage) DeleteTask(id string) error {
 	res, err := t.db.Exec("DELETE FROM scheduler WHERE id = ?", id)
@@ -49,9 +49,9 @@ func (t TaskStorage) DeleteTask(id string) error {
 	}
 	return nil
 }
-func GetTask(db *sqlx.DB, id string) (models.Tasks, error) {
+func (t TaskStorage) GetTask(id string) (models.Tasks, error) {
 	var task models.Tasks
-	err := db.QueryRow("SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?", id).Scan(
+	err := t.db.QueryRow("SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?", id).Scan(
 		&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -61,6 +61,5 @@ func GetTask(db *sqlx.DB, id string) (models.Tasks, error) {
 		}
 		return task, err
 	}
-	log.Printf("Фулл таска: %+v", task)
 	return task, err
 }

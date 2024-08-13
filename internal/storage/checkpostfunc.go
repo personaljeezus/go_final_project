@@ -1,35 +1,33 @@
-package service
+package storage
 
 import (
 	"database/sql"
 	"errors"
-	"go_final_project/internal/models"
-	. "go_final_project/internal/storage"
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/personaljeezus/go_final_project/internal/service"
+	"github.com/personaljeezus/go_final_project/models"
 )
 
-func (t TaskStorage) CheckPostTask(task *models.Tasks) error {
+func (t TaskStorage) CheckPostTask(task *models.Tasks) (error, int64) {
 	now := time.Now()
 	if task.Title == "" {
-		return errors.New("Поле id пустое")
+		return errors.New("Поле id пустое"), 0
 	}
 	if task.Date == "" {
-		task.Date = now.Format(Layout)
+		task.Date = now.Format(models.Layout)
 	}
-	_, err := time.Parse(Layout, task.Date)
+	_, err := time.Parse(models.Layout, task.Date)
 	if err != nil {
-		return errors.New("Неверный формат даты")
+		return errors.New("Неверный формат даты"), 0
 	}
-	if task.Date < now.Format(Layout) {
+	if task.Date < now.Format(models.Layout) {
 		if task.Repeat == "" {
-			task.Date = now.Format(Layout)
+			task.Date = now.Format(models.Layout)
 		} else {
-			newDate, err := NextWeekday(now, task.Date, task.Repeat)
+			newDate, err := service.NextWeekday(now, task.Date, task.Repeat)
 			if err != nil {
-				return errors.New("Ошибка при расчёте следующей даты")
+				return errors.New("Ошибка при расчёте следующей даты"), 0
 			}
 			task.Date = newDate
 		}
@@ -40,12 +38,11 @@ func (t TaskStorage) CheckPostTask(task *models.Tasks) error {
 		sql.Named("comment", task.Comment),
 		sql.Named("repeat", task.Repeat))
 	if err != nil {
-		return errors.New("Ошибка добавления данных в бд")
+		return errors.New("Ошибка добавления данных в бд"), 0
 	}
 	task.ID, err = res.LastInsertId()
 	if err != nil {
-		return errors.New("Не удается получить id")
+		return errors.New("Не удается получить id"), 0
 	}
-	c.JSON(http.StatusOK, gin.H{"id": task.ID})
-	return nil
+	return err, task.ID
 }

@@ -1,52 +1,44 @@
-package service
+package storage
 
 import (
 	"errors"
-	"go_final_project/models"
-	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/jmoiron/sqlx"
+	"github.com/personaljeezus/go_final_project/internal/service"
+	"github.com/personaljeezus/go_final_project/models"
 )
 
-func InputCheck(c *gin.Context, db *sqlx.DB, input *models.TasksInput) error {
+func (t *TaskStorage) InputCheck(input *models.TasksInput) (int64, error) {
 	now := time.Now()
 	if input.ID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Поле id пустое"})
-		return nil
+		return 0, errors.New("id requires")
 	}
 	id, err := strconv.ParseInt(input.ID, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат id"})
-		return nil
+		return 0, errors.New("wrong id type")
 	}
 	if id > 1000000 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат id"})
-		return nil
+		return 0, errors.New("id is too big")
 	}
 	if input.Title == "" {
-		c.JSON(http.StatusAccepted, gin.H{"error": "Поле заголовка пустое"})
-		return nil
+		return 0, errors.New("title field missing, type smth")
 	}
 	if input.Date == "" {
-		input.Date = now.Format(Layout)
+		input.Date = now.Format(models.Layout)
 	}
-	realTime, err := time.Parse(Layout, input.Date)
+	realTime, err := time.Parse(models.Layout, input.Date)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка парсинга даты"})
-		return nil
+		return 0, errors.New("input date parsing errored")
 	}
-	input.Date = realTime.Format(Layout)
-	if input.Date < now.Format(Layout) && input.Repeat == "" {
-		input.Date = now.Format(Layout)
+	input.Date = realTime.Format(models.Layout)
+	if input.Date < now.Format(models.Layout) && input.Repeat == "" {
+		input.Date = now.Format(models.Layout)
 	}
-	if input.Date < now.Format(Layout) && input.Repeat != "" {
-		newDate, err := NextWeekday(now, now.Format(Layout), input.Repeat)
+	if input.Date < now.Format(models.Layout) && input.Repeat != "" {
+		newDate, err := service.NextWeekday(now, now.Format(models.Layout), input.Repeat)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка расчёта даты"})
-			return nil
+			return 0, errors.New("next day calculation failed")
 		}
 		input.Date = newDate
 	}
@@ -57,21 +49,17 @@ func InputCheck(c *gin.Context, db *sqlx.DB, input *models.TasksInput) error {
 		Comment: input.Comment,
 		Repeat:  input.Repeat,
 	}
-	res, err := db.Exec(`UPDATE scheduler SET date = ?, title = ?, comment = ?, repeat = ? WHERE id = ?`,
+	res, err := t.db.Exec(`UPDATE scheduler SET date = ?, title = ?, comment = ?, repeat = ? WHERE id = ?`,
 		task.Date, task.Title, task.Comment, task.Repeat, task.ID)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "Ошибка обновления данных в базе данных"})
-		return errors.New("db exec fail")
+		return 0, errors.New("db exec fail")
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка получения количества затронутых строк"})
-		return errors.New("rowsaffected err")
+		return 0, errors.New("rowsaffected err")
 	}
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена"})
-		return errors.New("rowsaffected = 0")
+		return 0, errors.New("rowsaffected = 0")
 	}
-	c.JSON(http.StatusOK, gin.H{})
-	return nil
+	return res.RowsAffected()
 }

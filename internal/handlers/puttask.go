@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"go_final_project/checkfuncs"
-	"go_final_project/models"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/personaljeezus/go_final_project/internal/storage"
+	"github.com/personaljeezus/go_final_project/models"
 )
 
 func PutHandler(db *sqlx.DB) gin.HandlerFunc {
@@ -18,7 +18,8 @@ func PutHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка сериализации"})
 			return
 		}
-		if err := checkfuncs.InputCheck(c, db, &input); err != nil {
+		if err := storage.InputCheck(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "input check failed"})
 			return
 		}
 	}

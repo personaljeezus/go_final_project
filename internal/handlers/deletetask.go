@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/personaljeezus/go_final_project/internal/storage"
 )
 
 func DeleteHandler(db *sqlx.DB) gin.HandlerFunc {
@@ -14,7 +15,7 @@ func DeleteHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Осутствует идентификатор задачи"})
 			return
 		}
-		err := DeleteTask(id)
+		err := storage.DeleteTask(id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
 			return

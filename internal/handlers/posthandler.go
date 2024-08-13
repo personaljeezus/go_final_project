@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"go_final_project/checkfuncs"
-	"go_final_project/models"
 	"net/http"
+
+	"github.com/personaljeezus/go_final_project/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
