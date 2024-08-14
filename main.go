@@ -26,7 +26,7 @@ func main() {
 	r := gin.Default()
 	api := r.Group("/api")
 	{
-		api.GET("/nextdate", handlers.nextDate())
+		api.GET("/nextdate", handlers.nextDate)
 		api.GET("/tasks", handlers.GetTasksHandler(db))
 		api.POST("/task", handlers.PostHandler(db))
 		api.GET("/task", handlers.GetTaskByID(db))

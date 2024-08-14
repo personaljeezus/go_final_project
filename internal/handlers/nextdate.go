@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/personaljeezus/go_final_project/internal/service"
 	"github.com/personaljeezus/go_final_project/models"
 
 	"github.com/gin-gonic/gin"
@@ -32,7 +33,7 @@ func (h *Handlers) nextDate() gin.HandlerFunc {
 			return
 		}
 
-		nextDate, err := n.NextDay.NextWeekday(now, date.Format(models.Layout), repeatParam)
+		nextDate, err := service.NextWeekday(now, date.Format(models.Layout), repeatParam)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, err.Error())
 			return

@@ -7,19 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/personaljeezus/go_final_project/internal/storage"
 	"github.com/personaljeezus/go_final_project/models"
 	_ "modernc.org/sqlite"
 )
 
-type Service struct {
-	Serve *storage.TaskStorage
-}
-
-func NextDays(serve *storage.TaskStorage) *Service {
-	return &Service{Serve: serve}
-}
-func (s Service) NextWeekday(now time.Time, date string, repeat string) (string, error) {
+func NextWeekday(now time.Time, date string, repeat string) (string, error) {
 	parsedDate, err := time.Parse(models.Layout, date)
 	if err != nil {
 		return "", errors.New("Неверный формат даты")
