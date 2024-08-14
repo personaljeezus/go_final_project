@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (h *Handlers) nextDate() gin.HandlerFunc {
+func (h *Handlers) NextDate() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		nowParam := c.Query("now")
 		dateParam := c.Query("date")

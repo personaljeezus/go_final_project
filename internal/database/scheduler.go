@@ -10,13 +10,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type TaskStorage struct {
-	db *sqlx.DB
-}
-
-func NewTask(db *sqlx.DB) *TaskStorage {
-	return &TaskStorage{db: db}
-}
 func DbCheck() (*sqlx.DB, error) {
 	godotenv.Load("ENV_PATH")
 	appPath := os.Getenv("DATABASE_PATH")

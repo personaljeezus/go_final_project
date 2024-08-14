@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/personaljeezus/go_final_project/internal/database"
 	"github.com/personaljeezus/go_final_project/internal/handlers"
-	"github.com/personaljeezus/go_final_project/internal/storage"
 )
 
 func main() {
@@ -16,17 +16,17 @@ func main() {
 	if defaultPort == "" {
 		defaultPort = "7540"
 	}
-	db, err := storage.DbCheck()
+	db, err := database.DbCheck()
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
-	store := storage.NewTask(db)
+	store := database.NewTask(db)
 	handlers := handlers.NewHandler(store)
 	r := gin.Default()
 	api := r.Group("/api")
 	{
-		api.GET("/nextdate", handlers.nextDate)
+		api.GET("/nextdate", handlers.NextDate())
 		api.GET("/tasks", handlers.GetTasksHandler(db))
 		api.POST("/task", handlers.PostHandler(db))
 		api.GET("/task", handlers.GetTaskByID(db))

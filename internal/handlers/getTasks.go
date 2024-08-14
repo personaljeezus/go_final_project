@@ -14,6 +14,5 @@ func (h *Handlers) GetTasksHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "GetTasks func fail"})
 		}
 		c.JSON(http.StatusOK, gin.H{"tasks": tasks})
-		return
 	}
 }

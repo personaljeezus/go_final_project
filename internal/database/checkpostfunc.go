@@ -9,17 +9,17 @@ import (
 	"github.com/personaljeezus/go_final_project/models"
 )
 
-func (t TaskStorage) CheckPostTask(task *models.Tasks) (error, int64) {
+func (t TaskStorage) CheckPostTask(task *models.Tasks) (int64, error) {
 	now := time.Now()
 	if task.Title == "" {
-		return errors.New("Поле id пустое"), 0
+		return 0, errors.New("Поле id пустое")
 	}
 	if task.Date == "" {
 		task.Date = now.Format(models.Layout)
 	}
 	_, err := time.Parse(models.Layout, task.Date)
 	if err != nil {
-		return errors.New("Неверный формат даты"), 0
+		return 0, errors.New("Неверный формат даты")
 	}
 	if task.Date < now.Format(models.Layout) {
 		if task.Repeat == "" {
@@ -27,7 +27,7 @@ func (t TaskStorage) CheckPostTask(task *models.Tasks) (error, int64) {
 		} else {
 			newDate, err := service.NextWeekday(now, task.Date, task.Repeat)
 			if err != nil {
-				return errors.New("Ошибка при расчёте следующей даты"), 0
+				return 0, errors.New("Ошибка при расчёте следующей даты")
 			}
 			task.Date = newDate
 		}
@@ -38,11 +38,11 @@ func (t TaskStorage) CheckPostTask(task *models.Tasks) (error, int64) {
 		sql.Named("comment", task.Comment),
 		sql.Named("repeat", task.Repeat))
 	if err != nil {
-		return errors.New("Ошибка добавления данных в бд"), 0
+		return 0, errors.New("Ошибка добавления данных в бд")
 	}
 	task.ID, err = res.LastInsertId()
 	if err != nil {
-		return errors.New("Не удается получить id"), 0
+		return 0, errors.New("Не удается получить id")
 	}
-	return err, task.ID
+	return task.ID, err
 }

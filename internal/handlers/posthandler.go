@@ -15,7 +15,7 @@ func (h *Handlers) PostHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка сериализации"})
 			return
 		}
-		if _, err := h.Store.CheckPostTask(&tasks); err != 0 {
+		if _, err := h.Store.CheckPostTask(&tasks); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Task check fail"})
 			return
 		}

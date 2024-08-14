@@ -5,9 +5,18 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/personaljeezus/go_final_project/internal/service"
 	"github.com/personaljeezus/go_final_project/models"
 )
+
+type TaskStorage struct {
+	db *sqlx.DB
+}
+
+func NewTask(db *sqlx.DB) *TaskStorage {
+	return &TaskStorage{db: db}
+}
 
 func (t *TaskStorage) UpdateTaskDate(task *models.Tasks) error {
 	now := time.Now()
