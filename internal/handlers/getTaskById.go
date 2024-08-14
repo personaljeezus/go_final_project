@@ -1,41 +1,23 @@
 package handlers
 
 import (
-	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/personaljeezus/go_final_project/models"
 )
 
-func GetTaskByID(db *sqlx.DB) gin.HandlerFunc {
+func (h *Handlers) GetTaskByID(db *sqlx.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Query("id")
 		if id == "" {
 			log.Fatal("id field missing")
 		}
-		var task models.Tasks
-		err := db.QueryRow("SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?", id).Scan(
-			&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+		t, err := h.Store.GetSingleTask(id)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Задача не найдена"})
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Не указан идентификатор"})
-			}
-			return
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Error getting task"})
 		}
-		taskMap := map[string]string{
-			"id":      fmt.Sprintf("%d", task.ID),
-			"date":    task.Date,
-			"title":   task.Title,
-			"comment": task.Comment,
-			"repeat":  task.Repeat,
-		}
-		c.JSON(http.StatusOK, taskMap)
-		return
+		c.JSON(http.StatusOK, t)
 	}
 }

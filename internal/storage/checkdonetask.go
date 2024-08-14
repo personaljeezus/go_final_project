@@ -3,7 +3,6 @@ package storage
 import (
 	"database/sql"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/personaljeezus/go_final_project/internal/service"
@@ -20,8 +19,7 @@ func (t *TaskStorage) UpdateTaskDate(task *models.Tasks) error {
 	if err != nil {
 		return err
 	}
-	res, err := t.db.Exec(`UPDATE scheduler SET date = ?, title = ?, comment = ?, repeat = ? WHERE id = ?`,
-		newDate, task.Title, task.Comment, task.Repeat, task.ID)
+	res, err := t.db.Exec("UPDATE scheduler SET date = ? WHERE id = ?", newDate, task.ID)
 	if err != nil {
 		return errors.New("db exec fail")
 	}
@@ -37,17 +35,16 @@ func (t *TaskStorage) UpdateTaskDate(task *models.Tasks) error {
 func (t TaskStorage) DeleteTask(id string) error {
 	res, err := t.db.Exec("DELETE FROM scheduler WHERE id = ?", id)
 	if err != nil {
-		return err
+		return errors.New("no result")
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		log.Printf("Ошибка получения результата запроса: %v", err)
-		return nil
+		return errors.New("rows affected error")
 	}
 	if rowsAffected == 0 {
-		return nil
+		return errors.New("rows affected zero value")
 	}
-	return nil
+	return errors.New("task delete fail")
 }
 func (t TaskStorage) GetTask(id string) (models.Tasks, error) {
 	var task models.Tasks
@@ -55,9 +52,9 @@ func (t TaskStorage) GetTask(id string) (models.Tasks, error) {
 		&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Printf("Задание не найдено: %s", id)
+			errors.New("No rows")
 		} else {
-			log.Printf("Ошибка бд: %v", err)
+			errors.New("query fail")
 		}
 		return task, err
 	}

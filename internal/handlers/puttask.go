@@ -6,11 +6,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/personaljeezus/go_final_project/internal/storage"
 	"github.com/personaljeezus/go_final_project/models"
 )
 
-func PutHandler(db *sqlx.DB) gin.HandlerFunc {
+type Handlers struct {
+	Store *service.Service
+}
+
+func NewHandler(store *service.Service) *Handlers {
+	return &Handlers{Store: store}
+}
+func (h *Handlers) PutHandler(db *sqlx.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var input models.TasksInput
 		if err := c.BindJSON(&input); err != nil {
@@ -18,9 +24,10 @@ func PutHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка сериализации"})
 			return
 		}
-		if err := storage.InputCheck(&input); err != nil {
+		if _, err := h.Store.InputCheck(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "input check failed"})
 			return
 		}
+		c.JSON(http.StatusOK, gin.H{})
 	}
 }

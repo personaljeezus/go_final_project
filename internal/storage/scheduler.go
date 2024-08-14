@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 
@@ -16,20 +17,6 @@ type TaskStorage struct {
 func NewTask(db *sqlx.DB) *TaskStorage {
 	return &TaskStorage{db: db}
 }
-func OpenDB() (*sqlx.DB, error) {
-	godotenv.Load("ENV_PATH")
-	appPath := os.Getenv("DATABASE_PATH")
-	dbFile := filepath.Join(filepath.Dir(appPath), "scheduler.db")
-	if dbFile == "" {
-		dbFile = "./scheduler.db"
-	}
-	db, err := sqlx.Open("sqlite", dbFile)
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
-}
-
 func DbCheck() (*sqlx.DB, error) {
 	godotenv.Load("ENV_PATH")
 	appPath := os.Getenv("DATABASE_PATH")
@@ -42,9 +29,9 @@ func DbCheck() (*sqlx.DB, error) {
 	if os.IsNotExist(err) {
 		install = true
 	}
-	db, err := OpenDB()
+	db, err := sqlx.Open("sqlite", dbFile)
 	if err != nil {
-		return nil, err
+		log.Fatal("Failed to open db")
 	}
 	if install {
 		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS scheduler (id INTEGER PRIMARY KEY AUTOINCREMENT, date CHAR(8) NOT NULL, title TEXT NOT NULL, comment TEXT NOT NULL, repeat VARCHAR(128) NOT NULL)`)
