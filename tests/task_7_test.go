@@ -43,7 +43,6 @@ func TestDone(t *testing.T) {
 		ret, err := postJSON("api/task/done?id="+id, nil, http.MethodPost)
 		assert.NoError(t, err)
 		assert.Empty(t, ret)
-
 		var task Task
 		err = db.Get(&task, `SELECT * FROM scheduler WHERE id=?`, id)
 		assert.NoError(t, err)
