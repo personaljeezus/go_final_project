@@ -15,4 +15,7 @@ type TasksInput struct {
 	Repeat  string `json:"repeat"`
 }
 
-const Layout = "20060102"
+const (
+	Layout = "20060102"
+	limit  = 50
+)

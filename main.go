@@ -21,7 +21,7 @@ func main() {
 		panic(err)
 	}
 	defer db.Close()
-	store := database.NewTask(db)
+	store := database.NewTaskStorage(db)
 	handlers := handlers.NewHandler(store)
 	r := gin.Default()
 	api := r.Group("/api")
