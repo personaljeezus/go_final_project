@@ -16,7 +16,7 @@ func (h *Handlers) DeleteHandler(db *sqlx.DB) gin.HandlerFunc {
 		}
 		err := h.Store.DeleteTask(id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при удалении задачи"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{})

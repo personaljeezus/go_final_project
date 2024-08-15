@@ -53,7 +53,7 @@ func (t TaskStorage) DeleteTask(id string) error {
 	if rowsAffected == 0 {
 		return errors.New("rows affected zero value")
 	}
-	return errors.New("task delete fail")
+	return nil
 }
 func (t TaskStorage) GetTask(id string) (models.Tasks, error) {
 	var task models.Tasks

@@ -31,8 +31,5 @@ func (t TaskStorage) GetTasks() ([]map[string]string, error) {
 	if err := rows.Err(); err != nil {
 		return nil, errors.New("Ошибка получения строк")
 	}
-	if tasks == nil {
-		tasks = make([]map[string]string, 0)
-	}
-	return tasks, errors.New("Ошибка получения задач")
+	return tasks, nil
 }

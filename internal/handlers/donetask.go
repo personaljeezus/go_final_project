@@ -26,13 +26,13 @@ func (h *Handlers) DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 		if task.Repeat != "" {
 			err := h.Store.UpdateTaskDate(&task)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task date"})
+				c.JSON(http.StatusInternalServerError, gin.H{})
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{})
 		} else {
 			if err := h.Store.DeleteTask(id); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
+				c.JSON(http.StatusInternalServerError, gin.H{})
 				return
 			} else {
 				c.JSON(http.StatusOK, gin.H{})

@@ -40,9 +40,10 @@ func (t TaskStorage) CheckPostTask(task *models.Tasks) (int64, error) {
 	if err != nil {
 		return 0, errors.New("Ошибка добавления данных в бд")
 	}
-	task.ID, err = res.LastInsertId()
+	taskID, err := res.LastInsertId()
 	if err != nil {
 		return 0, errors.New("Не удается получить id")
 	}
-	return task.ID, err
+	task.ID = taskID
+	return taskID, err
 }

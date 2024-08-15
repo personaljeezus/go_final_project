@@ -15,11 +15,11 @@ func (t TaskStorage) GetSingleTask(id string) (map[string]string, error) {
 		&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Printf("No rows")
-		} else {
-			log.Printf("QueryRow error")
+			log.Printf("No rows found for ID: %s", id)
+			return nil, errors.New("Задание не найдено")
 		}
-		return nil, errors.New("QueryRow scan failed")
+		log.Printf("QueryRow error: %v", err)
+		return nil, errors.New("Ошибка выполнения запроса")
 	}
 	taskMap := map[string]string{
 		"id":      fmt.Sprintf("%d", task.ID),
@@ -28,5 +28,5 @@ func (t TaskStorage) GetSingleTask(id string) (map[string]string, error) {
 		"comment": task.Comment,
 		"repeat":  task.Repeat,
 	}
-	return taskMap, errors.New("Getting tasks error")
+	return taskMap, nil
 }

@@ -15,10 +15,11 @@ func (h *Handlers) PostHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка сериализации"})
 			return
 		}
-		if _, err := h.Store.CheckPostTask(&tasks); err != nil {
+		taskID, err := h.Store.CheckPostTask(&tasks)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Task check fail"})
 			return
 		}
-		c.JSON(http.StatusOK, &tasks.ID)
+		c.JSON(http.StatusOK, gin.H{"id": taskID})
 	}
 }
