@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/personaljeezus/go_final_project/internal/service"
+	"github.com/personaljeezus/go_final_project/internal/data"
 	"github.com/personaljeezus/go_final_project/models"
 )
 
@@ -27,17 +27,17 @@ func (t TaskStorage) CheckPostTask(task *models.Tasks) (int64, error) {
 		return 0, errors.New("Поле id пустое")
 	}
 	if task.Date == "" {
-		task.Date = now.Format(models.Layout)
+		task.Date = now.Format(models.DateLayout)
 	}
-	_, err := time.Parse(models.Layout, task.Date)
+	_, err := time.Parse(models.DateLayout, task.Date)
 	if err != nil {
 		return 0, errors.New("Неверный формат даты")
 	}
-	if task.Date < now.Format(models.Layout) {
+	if task.Date < now.Format(models.DateLayout) {
 		if task.Repeat == "" {
-			task.Date = now.Format(models.Layout)
+			task.Date = now.Format(models.DateLayout)
 		} else {
-			newDate, err := service.NextWeekday(now, task.Date, task.Repeat)
+			newDate, err := data.NextWeekday(now, task.Date, task.Repeat)
 			if err != nil {
 				return 0, errors.New("Ошибка при расчёте следующей даты")
 			}
@@ -60,7 +60,7 @@ func (t TaskStorage) CheckPostTask(task *models.Tasks) (int64, error) {
 	return taskID, err
 }
 func (t TaskStorage) GetTasks() ([]map[string]string, error) {
-	rows, err := t.db.Query("SELECT id, title, date, comment, repeat FROM scheduler ORDER BY date LIMIT ?", models.limit)
+	rows, err := t.db.Query("SELECT id, title, date, comment, repeat FROM scheduler ORDER BY date LIMIT ?", models.Limit)
 	if err != nil {
 		return nil, errors.New("Ошибка при выполнении запроса")
 	}
@@ -93,10 +93,10 @@ func (t TaskStorage) GetSingleTask(id string) (map[string]string, error) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Printf("No rows found for ID: %s", id)
-			return nil, errors.New("Задание не найдено")
+			return nil, err
 		}
 		log.Printf("QueryRow error: %v", err)
-		return nil, errors.New("Ошибка выполнения запроса")
+		return nil, err
 	}
 	taskMap := map[string]string{
 		"id":      fmt.Sprintf("%d", task.ID),
@@ -107,7 +107,7 @@ func (t TaskStorage) GetSingleTask(id string) (map[string]string, error) {
 	}
 	return taskMap, nil
 }
-func (t *TaskStorage) InputCheck(input *models.TasksInput) (int64, error) {
+func (t *TaskStorage) UpdateTask(input *models.TasksInput) (int64, error) {
 	now := time.Now()
 	if input.ID == "" {
 		return 0, errors.New("id requires")
@@ -123,18 +123,18 @@ func (t *TaskStorage) InputCheck(input *models.TasksInput) (int64, error) {
 		return 0, errors.New("title field missing, type smth")
 	}
 	if input.Date == "" {
-		input.Date = now.Format(models.Layout)
+		input.Date = now.Format(models.DateLayout)
 	}
-	realTime, err := time.Parse(models.Layout, input.Date)
+	realTime, err := time.Parse(models.DateLayout, input.Date)
 	if err != nil {
 		return 0, errors.New("input date parsing errored")
 	}
-	input.Date = realTime.Format(models.Layout)
-	if input.Date < now.Format(models.Layout) && input.Repeat == "" {
-		input.Date = now.Format(models.Layout)
+	input.Date = realTime.Format(models.DateLayout)
+	if input.Date < now.Format(models.DateLayout) && input.Repeat == "" {
+		input.Date = now.Format(models.DateLayout)
 	}
-	if input.Date < now.Format(models.Layout) && input.Repeat != "" {
-		newDate, err := service.NextWeekday(now, now.Format(models.Layout), input.Repeat)
+	if input.Date < now.Format(models.DateLayout) && input.Repeat != "" {
+		newDate, err := data.NextWeekday(now, now.Format(models.DateLayout), input.Repeat)
 		if err != nil {
 			return 0, errors.New("next day calculation failed")
 		}
@@ -154,47 +154,38 @@ func (t *TaskStorage) InputCheck(input *models.TasksInput) (int64, error) {
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return 0, errors.New("rowsaffected err")
+		return 0, err
 	}
 	if rowsAffected == 0 {
-		return 0, errors.New("rowsaffected = 0")
+		return 0, err
 	}
 	return res.RowsAffected()
 }
-func (t *TaskStorage) UpdateTaskDate(task *models.Tasks) error {
-	now := time.Now()
-	currentTime, err := time.Parse(models.Layout, task.Date)
-	if err != nil {
-		return err
-	}
-	newDate, err := service.NextWeekday(now, currentTime.Format(models.Layout), task.Repeat)
-	if err != nil {
-		return err
-	}
+func (t *TaskStorage) UpdateTaskDate(task *models.Tasks, newDate string) error {
 	res, err := t.db.Exec("UPDATE scheduler SET date = ? WHERE id = ?", newDate, task.ID)
 	if err != nil {
 		return errors.New("db exec fail")
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return errors.New("rowsaffected err")
+		return err
 	}
 	if rowsAffected == 0 {
-		return errors.New("rowsaffected = 0")
+		return err
 	}
-	return errors.New("task upd fail")
+	return err
 }
 func (t TaskStorage) DeleteTask(id string) error {
 	res, err := t.db.Exec("DELETE FROM scheduler WHERE id = ?", id)
 	if err != nil {
-		return errors.New("no result")
+		return err
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return errors.New("rows affected error")
+		return err
 	}
 	if rowsAffected == 0 {
-		return errors.New("rows affected zero value")
+		return err
 	}
 	return nil
 }
@@ -204,11 +195,10 @@ func (t TaskStorage) GetTask(id string) (models.Tasks, error) {
 		&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			errors.New("No rows")
+			return task, err
 		} else {
-			errors.New("query fail")
+			return task, err
 		}
-		return task, err
 	}
 	return task, err
 }

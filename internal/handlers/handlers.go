@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/personaljeezus/go_final_project/internal/data"
 	"github.com/personaljeezus/go_final_project/internal/database"
 	"github.com/personaljeezus/go_final_project/models"
 )
@@ -83,19 +84,19 @@ func (h *Handlers) NextDate() gin.HandlerFunc {
 			return
 		}
 
-		now, err := time.Parse(models.Layout, nowParam)
+		now, err := time.Parse(models.DateLayout, nowParam)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Ошибка парсинга"})
 			return
 		}
 
-		date, err := time.Parse(models.Layout, dateParam)
+		date, err := time.Parse(models.DateLayout, dateParam)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Ошибка парсинга"})
 			return
 		}
 
-		nextDate, err := data.NextWeekday(now, date.Format(models.Layout), repeatParam)
+		nextDate, err := data.NextWeekday(now, date.Format(models.DateLayout), repeatParam)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, err.Error())
 			return
@@ -119,8 +120,17 @@ func (h *Handlers) DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 			}
 			return
 		}
+		now := time.Now()
+		currentTime, err := time.Parse(models.DateLayout, task.Date)
+		if err != nil {
+			return
+		}
+		newDate, err := data.NextWeekday(now, currentTime.Format(models.DateLayout), task.Repeat)
+		if err != nil {
+			return
+		}
 		if task.Repeat != "" {
-			err := h.Store.UpdateTaskDate(&task)
+			err := h.Store.UpdateTaskDate(&task, newDate)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{})
 				return
@@ -145,7 +155,7 @@ func (h *Handlers) PutHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка сериализации"})
 			return
 		}
-		if _, err := h.Store.InputCheck(&input); err != nil {
+		if _, err := h.Store.UpdateTask(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "input check failed"})
 			return
 		}

@@ -16,6 +16,6 @@ type TasksInput struct {
 }
 
 const (
-	Layout = "20060102"
-	limit  = 50
+	DateLayout = "20060102"
+	Limit      = 50
 )
