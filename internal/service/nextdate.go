@@ -7,10 +7,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/personaljeezus/go_final_project/internal/database"
 	"github.com/personaljeezus/go_final_project/models"
 	_ "modernc.org/sqlite"
 )
 
+type TaskService struct {
+	Serv *database.TaskStorage
+}
+
+func NewTaskService(serv *database.TaskStorage) *TaskService {
+	return &TaskService{Serv: serv}
+}
 func NextWeekday(now time.Time, date string, repeat string) (string, error) {
 	parsedDate, err := time.Parse(models.DateLayout, date)
 	if err != nil {

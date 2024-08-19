@@ -9,15 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/personaljeezus/go_final_project/internal/data"
-	"github.com/personaljeezus/go_final_project/internal/database"
 	"github.com/personaljeezus/go_final_project/models"
 )
 
 type Handlers struct {
-	Store *database.TaskStorage
+	Store *service.TaskService
 }
 
-func NewHandler(store *database.TaskStorage) *Handlers {
+func NewHandler(store *service.TaskService) *Handlers {
 	return &Handlers{Store: store}
 }
 func (h *Handlers) PostHandler(db *sqlx.DB) gin.HandlerFunc {
