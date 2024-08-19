@@ -22,7 +22,8 @@ func main() {
 	}
 	defer db.Close()
 	store := database.NewTaskStorage(db)
-	handlers := handlers.NewHandler(store)
+	service := NewTaskService
+	handlers := handlers.NewHandler(service)
 	r := gin.Default()
 	api := r.Group("/api")
 	{

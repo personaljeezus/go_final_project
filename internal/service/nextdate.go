@@ -19,7 +19,7 @@ type TaskService struct {
 func NewTaskService(serv *database.TaskStorage) *TaskService {
 	return &TaskService{Serv: serv}
 }
-func NextWeekday(now time.Time, date string, repeat string) (string, error) {
+func (s TaskService) NextWeekday(now time.Time, date string, repeat string) (string, error) {
 	parsedDate, err := time.Parse(models.DateLayout, date)
 	if err != nil {
 		return "", errors.New("Неверный формат даты")

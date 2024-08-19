@@ -8,15 +8,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/personaljeezus/go_final_project/internal/data"
+	data "github.com/personaljeezus/go_final_project/internal/service"
 	"github.com/personaljeezus/go_final_project/models"
 )
 
 type Handlers struct {
-	Store *service.TaskService
+	Store *data.TaskService
 }
 
-func NewHandler(store *service.TaskService) *Handlers {
+func NewHandler(store *data.TaskService) *Handlers {
 	return &Handlers{Store: store}
 }
 func (h *Handlers) PostHandler(db *sqlx.DB) gin.HandlerFunc {
@@ -26,7 +26,7 @@ func (h *Handlers) PostHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка сериализации"})
 			return
 		}
-		taskID, err := h.Store.CheckPostTask(&tasks)
+		taskID, err := h.Store.Serv.CheckPostTask(&tasks)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Task check fail"})
 			return
@@ -39,7 +39,7 @@ func (h *Handlers) GetTaskByID(db *sqlx.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Query("id")
 
-		t, err := h.Store.GetSingleTask(id)
+		t, err := h.Store.Serv.GetSingleTask(id)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Error getting task"})
 			return
@@ -50,7 +50,7 @@ func (h *Handlers) GetTaskByID(db *sqlx.DB) gin.HandlerFunc {
 
 func (h *Handlers) GetTasksHandler(db *sqlx.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tasks, err := h.Store.GetTasks()
+		tasks, err := h.Store.Serv.GetTasks()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "GetTasks func fail"})
 		}
@@ -64,7 +64,7 @@ func (h *Handlers) DeleteHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Осутствует идентификатор задачи"})
 			return
 		}
-		err := h.Store.DeleteTask(id)
+		err := h.Store.Serv.DeleteTask(id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при удалении задачи"})
 			return
@@ -95,7 +95,7 @@ func (h *Handlers) NextDate() gin.HandlerFunc {
 			return
 		}
 
-		nextDate, err := data.NextWeekday(now, date.Format(models.DateLayout), repeatParam)
+		nextDate, err := h.Store.NextWeekday(now, date.Format(models.DateLayout), repeatParam)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, err.Error())
 			return
@@ -110,7 +110,7 @@ func (h *Handlers) DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 		if id == "" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "id not found"})
 		}
-		task, err := h.Store.GetTask(id)
+		task, err := h.Store.Serv.GetTask(id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
@@ -124,19 +124,19 @@ func (h *Handlers) DoneHandler(db *sqlx.DB) gin.HandlerFunc {
 		if err != nil {
 			return
 		}
-		newDate, err := data.NextWeekday(now, currentTime.Format(models.DateLayout), task.Repeat)
+		newDate, err := h.Store.NextWeekday(now, currentTime.Format(models.DateLayout), task.Repeat)
 		if err != nil {
 			return
 		}
 		if task.Repeat != "" {
-			err := h.Store.UpdateTaskDate(&task, newDate)
+			err := h.Store.Serv.UpdateTaskDate(&task, newDate)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{})
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{})
 		} else {
-			if err := h.Store.DeleteTask(id); err != nil {
+			if err := h.Store.Serv.DeleteTask(id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{})
 				return
 			} else {
@@ -154,7 +154,7 @@ func (h *Handlers) PutHandler(db *sqlx.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка сериализации"})
 			return
 		}
-		if _, err := h.Store.UpdateTask(&input); err != nil {
+		if _, err := h.Store.Serv.UpdateTask(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "input check failed"})
 			return
 		}
