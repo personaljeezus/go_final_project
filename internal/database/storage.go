@@ -5,11 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
-	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/personaljeezus/go_final_project/internal/data"
+	"github.com/personaljeezus/go_final_project/internal/utils"
 	"github.com/personaljeezus/go_final_project/models"
 )
 
@@ -22,27 +20,8 @@ func NewTaskStorage(db *sqlx.DB) *TaskStorage {
 }
 
 func (t TaskStorage) CheckPostTask(task *models.Tasks) (int64, error) {
-	now := time.Now()
-	if task.Title == "" {
-		return 0, errors.New("Поле id пустое")
-	}
-	if task.Date == "" {
-		task.Date = now.Format(models.DateLayout)
-	}
-	_, err := time.Parse(models.DateLayout, task.Date)
-	if err != nil {
-		return 0, errors.New("Неверный формат даты")
-	}
-	if task.Date < now.Format(models.DateLayout) {
-		if task.Repeat == "" {
-			task.Date = now.Format(models.DateLayout)
-		} else {
-			newDate, err := data.NextWeekday(now, task.Date, task.Repeat)
-			if err != nil {
-				return 0, errors.New("Ошибка при расчёте следующей даты")
-			}
-			task.Date = newDate
-		}
+	if err := utils.CheckPostLogic(task); err != nil {
+		errors.New("213")
 	}
 	res, err := t.db.Exec("INSERT INTO scheduler (date, title, comment, repeat) VALUES (:date, :title, :comment, :repeat)",
 		sql.Named("date", task.Date),
@@ -108,37 +87,8 @@ func (t TaskStorage) GetSingleTask(id string) (map[string]string, error) {
 	return taskMap, nil
 }
 func (t *TaskStorage) UpdateTask(input *models.TasksInput) (int64, error) {
-	now := time.Now()
-	if input.ID == "" {
-		return 0, errors.New("id requires")
-	}
-	id, err := strconv.ParseInt(input.ID, 10, 64)
-	if err != nil {
-		return 0, errors.New("wrong id type")
-	}
-	if id > 1000000 {
-		return 0, errors.New("id is too big")
-	}
-	if input.Title == "" {
-		return 0, errors.New("title field missing, type smth")
-	}
-	if input.Date == "" {
-		input.Date = now.Format(models.DateLayout)
-	}
-	realTime, err := time.Parse(models.DateLayout, input.Date)
-	if err != nil {
-		return 0, errors.New("input date parsing errored")
-	}
-	input.Date = realTime.Format(models.DateLayout)
-	if input.Date < now.Format(models.DateLayout) && input.Repeat == "" {
-		input.Date = now.Format(models.DateLayout)
-	}
-	if input.Date < now.Format(models.DateLayout) && input.Repeat != "" {
-		newDate, err := data.NextWeekday(now, now.Format(models.DateLayout), input.Repeat)
-		if err != nil {
-			return 0, errors.New("next day calculation failed")
-		}
-		input.Date = newDate
+	if err := utils.CheckUpdateLogic(input); err != nil {
+		errors.New("213")
 	}
 	task := models.Tasks{
 		ID:      id,
