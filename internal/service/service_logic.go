@@ -1,4 +1,4 @@
-package utils
+package service
 
 import (
 	"errors"
@@ -24,7 +24,7 @@ func CheckPostLogic(task *models.Tasks) error {
 		if task.Repeat == "" {
 			task.Date = now.Format(models.DateLayout)
 		} else {
-			newDate, err := s.Serv.NextWeekday(now, task.Date, task.Repeat)
+			newDate, err := NextWeekday(now, task.Date, task.Repeat)
 			if err != nil {
 				return errors.New("Ошибка при расчёте следующей даты")
 			}

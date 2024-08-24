@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/personaljeezus/go_final_project/internal/service"
 	"github.com/personaljeezus/go_final_project/models"
 )
 
